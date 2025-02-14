@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { headerOrigin, optionsHandler } from '@/utils/cors';
+import { corsHeadersGet} from '@/utils/cors';
 
 const prisma = new PrismaClient();
 
@@ -10,7 +10,7 @@ type TrafficSource = {
 };
 
 export async function OPTIONS() {
-  return optionsHandler();
+  return new NextResponse(null, { status: 204, headers: corsHeadersGet() });
 }
 
 export async function GET() {
@@ -20,11 +20,8 @@ export async function GET() {
       label: source.sourceName,
       value: source.visitCount,
     }));
-
-    if (!formattedData.length) {
-      return NextResponse.json({ error: 'No traffic source data found' }, { status: 404 });
-    }
-    return NextResponse.json(formattedData, { status: 200, headers: headerOrigin });
+    const headers = corsHeadersGet();
+    return NextResponse.json(formattedData, { status: 200, headers });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

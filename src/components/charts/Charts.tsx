@@ -34,31 +34,6 @@ export function TimeSeriesChart({ data }: { data: TimeSeriesData }) {
   );
 }
 
-export type SessionDurationData = { time: string; averageSessionDuration: number }[];
-// export function SessionDurationChart({ data }: { data: SessionDurationData }) {
-//   return (
-//     <ResponsiveContainer width="100%" height={300}>
-//       <BarChart data={data}>
-//         <XAxis dataKey="time" />
-//         <YAxis />
-//         <Tooltip />
-//         <Bar dataKey="averageSessionDuration" fill="#8884d8" />
-//       </BarChart>
-//     </ResponsiveContainer>
-//   );
-// }
-
-// export type DeviceTypeData = { deviceType: string; percentage: number }[];
-// export function DeviceTypePieChart({ data }: { data: DeviceTypeData }) {
-//   return (
-//     <ResponsiveContainer width="100%" height={300}>
-//       <PieChart>
-//         <Pie data={data} dataKey="percentage" nameKey="deviceType" fill="#82ca9d" label />
-//       </PieChart>
-//     </ResponsiveContainer>
-//   );
-// }
-
 export type TrafficPatternData = { hour: number; dayOfWeek: string; visitCount: number }[];
 export function TrafficPatternScatterChart({ data }: { data: TrafficPatternData }) {
   return (

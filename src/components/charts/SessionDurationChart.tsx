@@ -1,7 +1,9 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useEffect, useState } from 'react';
 import { safeFetch } from '@/utils/safeFetch';
-import { SessionDurationData } from './Charts';
+
+type SessionDurationData = { time: string; averageSessionDuration: number }[];
+
 
 export function SessionDurationChart() {
   const [sessionDuration, setSessionDuration] = useState<SessionDurationData>([]);
