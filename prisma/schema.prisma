@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// Prisma Schema for Glint Analytics
+// Run `npx prisma init` to create the schema file.
+// Save this content in `prisma/schema.prisma`.
+
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models for Glint Analytics Dashboard
+model AverageMetrics {
+  id                      String   @id @default(cuid())
+  timestamp               DateTime @default(now())
+  hour                    Int
+  dayOfWeek               Int
+  averageVisits           Int
+  averageSessionDuration  Float
+  averageNetworkSpeed     Float
+  deviceType              String  // e.g., mobile, desktop
+  browser                 String  // e.g., Chrome, Firefox
+  browserCount            Int
+  connectionType          String  // e.g., 4G, 5G
+}
+
+model LocationMetrics {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  country    String
+  region     String
+  city       String
+  visitCount Int
+}
+
+model ReferralMetrics {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  source     String
+  visitCount Int
+}
+
+model TrafficSource {
+  id         String  @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sourceName String
+  visitCount Int
+}
+
+model SessionMetrics {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  duration  Float
+}
+
+model DeviceMetrics {
+  id         String   @id @default(uuid())
+  deviceType String
+  percentage Float
+}
