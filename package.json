@@ -14,7 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node --compiler-options '{\"module\": \"CommonJS\"}' prisma/seeds/main.ts",
     "generate-data": "ts-node scripts/generate-data.ts",
-    "generate-data:remote": "GLINT_API_URL=https://your-app.vercel.app/api/trackAnalytics ts-node scripts/generate-data.ts"
+    "generate-data:remote": "GLINT_API_URL=https://your-app.vercel.app/api/trackAnalytics ts-node scripts/generate-data.ts",
+    "deploy-worker": "cd cloudflare-worker && ./deploy.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.3.1",

@@ -13,7 +13,8 @@
  */
 
 export interface Env {
-  GLINT_API_URL: string; // Your Glint API URL, e.g., https://your-app.vercel.app/api/trackAnalytics
+  GLINT_API_URL?: string; // Your Glint API URL, e.g., https://your-app.vercel.app/api/trackAnalytics
+  LIVE_SITE?: string; // Alternative: base URL, will append /api/trackAnalytics
   GLINT_API_KEY?: string; // Optional: API key for authentication (if you add auth to your API)
 }
 
@@ -80,13 +81,26 @@ async function sendAnalytics(apiUrl: string, type: string, payload: any, apiKey?
   }
 }
 
+function getApiUrl(env: Env): string {
+  if (env.GLINT_API_URL) {
+    return env.GLINT_API_URL;
+  }
+  if (env.LIVE_SITE) {
+    // Remove trailing slash if present
+    const baseUrl = env.LIVE_SITE.replace(/\/$/, '');
+    return `${baseUrl}/api/trackAnalytics`;
+  }
+  throw new Error('Either GLINT_API_URL or LIVE_SITE must be configured');
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const apiUrl = env.GLINT_API_URL;
-    
-    if (!apiUrl) {
+    let apiUrl: string;
+    try {
+      apiUrl = getApiUrl(env);
+    } catch (error) {
       return new Response(
-        JSON.stringify({ error: 'GLINT_API_URL not configured' }),
+        JSON.stringify({ error: error instanceof Error ? error.message : 'API URL not configured' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -131,17 +145,18 @@ export default {
   },
 
   // Cron trigger handler (runs on schedule)
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    const apiUrl = env.GLINT_API_URL;
-    
-    if (!apiUrl) {
-      console.error('GLINT_API_URL not set in environment');
+  async scheduled(event: any, env: Env, ctx: any): Promise<void> {
+    let apiUrl: string;
+    try {
+      apiUrl = getApiUrl(env);
+    } catch (error) {
+      console.error('API URL not configured:', error instanceof Error ? error.message : 'Unknown error');
       return;
     }
 
-    // Generate a batch of events
-    const batchSize = 5;
-    const results = [];
+    // Generate a small batch of events (3 events every 10 min = reasonable data flow)
+    const batchSize = 3;
+    const results: boolean[] = [];
 
     for (let i = 0; i < batchSize; i++) {
       const country = randomChoice(COUNTRIES);
@@ -169,7 +184,7 @@ export default {
       results.push(...batchResults);
     }
 
-    const successCount = results.filter(Boolean).length;
+    const successCount = results.filter(r => r === true).length;
     console.log(`Cron job completed: ${successCount}/${results.length} events sent`);
   },
 };
