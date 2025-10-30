@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from '@/lib/prisma';
-
-// export async function GET() {
-//   const data = await prisma.deviceMetrics.findMany();
-//   return NextResponse.json(data.map(d => ({ label: d.deviceType, value: d.percentage })));
-// }
 import { corsHeaders } from '@/utils/cors';
 
 export async function OPTIONS() {
-  return corsHeaders;
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
-
-// TODO UPDATE
-
 
 export async function GET() {
   try {
@@ -49,7 +41,6 @@ export async function POST(req: NextRequest) {
     
     const created = await prisma.deviceMetrics.create({
       data: {
-        // timestamp: new Date(),
         deviceType: body.deviceType,
         percentage: body.percentage,
       }

@@ -22,7 +22,7 @@ export function ReferralSourceChart() {
 
         const rawData = await response.json();
         // Format data for pie chart: { label: string, value: number }[]
-        const formattedData: PieChartDatum[] = rawData.map((item: any) => ({
+        const formattedData: PieChartDatum[] = rawData.map((item: { source?: string; visitCount?: number }) => ({
           label: item.source || 'unknown',
           value: item.visitCount || 0,
         }));

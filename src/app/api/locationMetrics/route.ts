@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-// export async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
-//   if (req.method === 'GET') {
-//     try {
-//       const locationMetrics = await prisma.locationMetrics.findMany();
-//       res.status(200).json(locationMetrics);
-//     } catch (error) {
-//       res.status(500).json({ error: 'Failed to fetch location metrics', message: error });
-//     }
-//   }
-// }
 import { corsHeaders } from '@/utils/cors';
 
 export async function OPTIONS() {
-  return corsHeaders;
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
 export async function GET() {

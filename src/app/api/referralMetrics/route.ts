@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-// export async function handler(
-//   req: NextApiRequest,
-//   res: NextApiResponse
-// ): Promise<void> {
-//   if (req.method === 'GET') {
-//     try {
-//       const referralMetrics = await prisma.referralMetrics.findMany();
-//       res.status(200).json(referralMetrics);
-//     } catch (error) {
-//       res.status(500).json({ error: 'Failed to fetch referral metrics', mesaage: error });
-//     }
-//   }
-// }
 import { corsHeaders } from '@/utils/cors';
 
 export async function OPTIONS() {
-  return corsHeaders;
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
 export async function GET() {

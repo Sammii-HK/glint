@@ -14,10 +14,9 @@ type TrackRequestBody = {
   type: AnalyticsType;
   payload: AverageMetricsInput | LocationMetricsInput | ReferralMetricsInput | TrafficSourceInput;
 };
-// import { headerOrigin, optionsHandler } from '@/utils/cors';
 
 export async function OPTIONS() {
-  return corsHeaders;
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
 export async function POST(request: Request) {
@@ -99,9 +98,9 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(result, { status: 201, headers: corsHeaders });
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       // Handle Prisma-specific errors
-      if (dbError.code === 'P2002') {
+      if (dbError && typeof dbError === 'object' && 'code' in dbError && dbError.code === 'P2002') {
         // Unique constraint violation - could happen if same data inserted twice
         // In production, might want to update instead of create
         return NextResponse.json(
@@ -129,6 +128,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-
-// - Add headers to requests using a proxy or custom headers for local geo/ip testing.

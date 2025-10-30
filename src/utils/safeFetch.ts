@@ -1,16 +1,3 @@
-// async function safeFetch(url: string | URL | Request) {
-//   const response = await fetch(url);
-//   const contentType = response.headers.get("content-type");
-//   if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
-//   if (contentType && contentType.includes("application/json")) {
-//     return response.json();
-//   } else {
-//     throw new Error("Received non-JSON response");
-//   }
-// }
-
-// export { safeFetch };
-
 export async function safeFetch<T>(url: string, options?: RequestInit): Promise<T | null> {
   const fullUrl = process.env.NEXT_PUBLIC_API_BASE ? `${process.env.NEXT_PUBLIC_API_BASE}${url}` : url;
   console.log(`🔍 Fetching URL: ${fullUrl}`);
@@ -39,5 +26,3 @@ export async function safeFetch<T>(url: string, options?: RequestInit): Promise<
     return null;
   }
 }
-
-// export { safeFetch };

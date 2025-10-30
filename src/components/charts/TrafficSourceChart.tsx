@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { PieChartComponent, PieChartDatum } from "./Charts";
-// import { TrafficSource } from "@prisma/client";
 import { TrafficSource } from "@/app/api/trafficSources/route";
 
 

@@ -3,7 +3,7 @@ import { corsHeaders } from '@/utils/cors';
 import { prisma } from '@/lib/prisma';
 
 export async function OPTIONS() {
-  return corsHeaders;
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 export async function GET() {
   try {

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "prepare": "husky",
+    "postinstall": "prisma generate",
+    "prepare": "husky || true",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node --compiler-options '{\"module\": \"CommonJS\"}' prisma/seeds/main.ts",
@@ -45,7 +46,7 @@
       "eslint --max-warnings 0"
     ],
     "*.{json,css,scss,md}": [
-      "prettier --write"
+      "eslint --fix"
     ]
   }
 }

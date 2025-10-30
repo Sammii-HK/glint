@@ -25,7 +25,7 @@ useEffect(() => {
 
       const rawData = await response.json();
       // Format data for TimeSeriesChart: { time: string, averageVisits: number }[]
-      const formattedData: TimeSeriesData = rawData.map((item: any) => ({
+      const formattedData: TimeSeriesData = rawData.map((item: { timestamp: string | Date; averageVisits?: number }) => ({
         time: new Date(item.timestamp).toISOString().split('T')[0],
         averageVisits: item.averageVisits || 0,
       }));
