@@ -16,8 +16,9 @@ export function TrafficSourceChart() {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         const data: TrafficSource[] = await response.json();
-        // Data is already formatted by API as { label, value }
-        setTrafficSources(data || []);
+        // Sort by value descending for better visualization
+        const sorted = (data || []).sort((a, b) => b.value - a.value);
+        setTrafficSources(sorted);
       } catch (error) {
         console.error("Error fetching traffic source data:", error);
         setTrafficSources([]); // Set empty array on error

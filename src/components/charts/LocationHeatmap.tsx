@@ -1,15 +1,40 @@
 import { useEffect, useState } from "react";
-import { Heatmap, HeatmapData } from "./Heatmap";
-import { safeFetch } from "@/utils/safeFetch";
-
-export type LocationHeatmapData = { latitude: number; longitude: number; visitCount: number }[];
+import { CountryBarChart, CountryData } from "./Charts";
 
 export function LocationHeatmap() {
-  const [locationData, setLocationData] = useState<HeatmapData>([]);
-useEffect(() => {
-  safeFetch<HeatmapData>('/api/locationMetrics')
-    .then(data => data && setLocationData(data));
-}, []);
+  const [locationData, setLocationData] = useState<CountryData>([]);
 
-  return <Heatmap data={locationData} title="User Location Heatmap" />;
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      try {
+        const response = await fetch("/api/locationMetrics", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setLocationData([]);
+            return;
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const rawData = await response.json();
+        const formattedData: CountryData = rawData.map((item: { country: string; visitCount: number }) => ({
+          country: item.country || 'unknown',
+          visitCount: item.visitCount || 0,
+        }));
+        
+        setLocationData(formattedData);
+      } catch (error) {
+        console.error("Error fetching location data:", error);
+        setLocationData([]);
+      }
+    };
+
+    fetchLocationData();
+  }, []);
+
+  return <CountryBarChart data={locationData} />;
 }

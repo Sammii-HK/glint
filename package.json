@@ -15,6 +15,8 @@
     "prisma:seed": "ts-node --compiler-options '{\"module\": \"CommonJS\"}' prisma/seeds/main.ts",
     "generate-data": "ts-node scripts/generate-data.ts",
     "generate-data:remote": "GLINT_API_URL=https://your-app.vercel.app/api/trackAnalytics ts-node scripts/generate-data.ts",
+    "generate-historical": "ts-node scripts/generate-historical-data.ts",
+    "generate-historical:30": "ts-node scripts/generate-historical-data.ts 30",
     "deploy-worker": "cd cloudflare-worker && ./deploy.sh"
   },
   "dependencies": {

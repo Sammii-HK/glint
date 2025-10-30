@@ -21,12 +21,22 @@ export function ReferralSourceChart() {
         }
 
         const rawData = await response.json();
-        // Format data for pie chart: { label: string, value: number }[]
-        const formattedData: PieChartDatum[] = rawData.map((item: { source?: string; visitCount?: number }) => ({
-          label: item.source || 'unknown',
-          value: item.visitCount || 0,
-        }));
-        setReferralData(formattedData);
+        // Format and aggregate data for pie chart
+        type AggregatedItem = { label: string; value: number };
+        const aggregated = rawData.reduce((acc: AggregatedItem[], item: { source?: string; visitCount?: number }) => {
+          const source = item.source || 'unknown';
+          const existing = acc.find((d: AggregatedItem) => d.label === source);
+          if (existing) {
+            existing.value += item.visitCount || 0;
+          } else {
+            acc.push({ label: source, value: item.visitCount || 0 });
+          }
+          return acc;
+        }, []);
+
+        // Sort by value and take top items
+        const sorted = aggregated.sort((a: AggregatedItem, b: AggregatedItem) => b.value - a.value);
+        setReferralData(sorted);
       } catch (error) {
         console.error("Error fetching referral source data:", error);
         setReferralData([]);

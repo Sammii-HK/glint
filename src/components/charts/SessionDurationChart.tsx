@@ -1,27 +1,37 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useEffect, useState } from 'react';
-import { safeFetch } from '@/utils/safeFetch';
-
-type SessionDurationData = { time: string; averageSessionDuration: number }[];
-
+import { SessionDurationChart as Chart, SessionDurationData } from './Charts';
 
 export function SessionDurationChart() {
-  const [sessionDuration, setSessionDuration] = useState<SessionDurationData>([]);
+  const [sessionData, setSessionData] = useState<SessionDurationData>([]);
 
   useEffect(() => {
-    safeFetch<SessionDurationData>('/api/sessionDuration')
-      .then(data => data && setSessionDuration(data));
+    const fetchSessionData = async () => {
+      try {
+        const response = await fetch("/api/sessionDuration", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          setSessionData([]);
+          return;
+        }
+
+        const rawData = await response.json();
+        const formattedData: SessionDurationData = rawData.map((item: { time: string | Date; duration?: number; averageSessionDuration?: number }) => ({
+          time: new Date(item.time || item.time).toISOString().split('T')[0],
+          duration: item.duration || item.averageSessionDuration || 0,
+        }));
+        
+        setSessionData(formattedData);
+      } catch (error) {
+        console.error("Error fetching session duration data:", error);
+        setSessionData([]);
+      }
+    };
+
+    fetchSessionData();
   }, []);
 
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={sessionDuration}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" />
-        <YAxis />
-        <Tooltip />
-        <Line type="monotone" dataKey="averageSessionDuration" stroke="#82ca9d" />
-      </LineChart>
-    </ResponsiveContainer>
-  );
+  return <Chart data={sessionData} />;
 }
