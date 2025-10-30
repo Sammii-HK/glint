@@ -1,0 +1,17 @@
+name = "glint-analytics-pump"
+main = "glint-analytics-pump.ts"
+compatibility_date = "2024-01-01"
+
+# Cron trigger - runs every minute to populate analytics
+# Format: minute hour day month weekday
+# This runs every minute - adjust as needed (e.g., "*/5 * * * *" for every 5 minutes)
+[triggers]
+crons = ["*/1 * * * *"]
+
+# Environment variables (set via wrangler secret put GLINT_API_URL)
+# Or set in Cloudflare Dashboard > Workers & Pages > glint-analytics-pump > Settings > Variables
+
+[vars]
+# Uncomment and set your API URL here, or use secrets:
+# GLINT_API_URL = "https://your-app.vercel.app/api/trackAnalytics"
+

@@ -2,9 +2,9 @@
 
 import { AverageMetricsChart } from './charts/AverageMetricsChart';
 // import { SessionDurationChart } from './charts/SessionDurationChart';
-// import { DeviceTypeChart } from './charts/DeviceTypeChart';
+import { DeviceTypeChart } from './charts/DeviceTypeChart';
 // import { LocationHeatmap } from './charts/LocationHeatmap';
-// import { ReferralSourceChart } from './charts/ReferralSourceChart';
+import { ReferralSourceChart } from './charts/ReferralSourceChart';
 import { TrafficSourceChart } from './charts/TrafficSourceChart';
 
 export default function Dashboard() {
@@ -14,9 +14,9 @@ export default function Dashboard() {
       {/* <h1>📊 Real-Time Analytics Dashboard</h1> */}
       <AverageMetricsChart />
       <TrafficSourceChart />
-      {/* <LocationHeatmap />
-      <ReferralSourceChart />
       <DeviceTypeChart />
+      <ReferralSourceChart />
+      {/* <LocationHeatmap />
       <SessionDurationChart /> */}
     </div>
   );
