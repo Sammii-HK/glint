@@ -16,11 +16,27 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const data = await prisma.deviceMetrics.findMany();
-    return NextResponse.json(data.map(d => ({ label: d.deviceType, value: d.percentage })));
+    const data = await prisma.deviceMetrics.findMany({
+      orderBy: { deviceType: 'asc' },
+    });
+    
+    // Return empty array if no data
+    if (!data.length) {
+      return NextResponse.json([], { status: 200, headers: corsHeaders });
+    }
+    
+    const formattedData = data.map(d => ({ 
+      label: d.deviceType || 'unknown', 
+      value: d.percentage || 0 
+    }));
+    
+    return NextResponse.json(formattedData, { status: 200, headers: corsHeaders });
   } catch (error) {
     console.error('❌ Error in deviceMetrics API:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Server error' }, 
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 

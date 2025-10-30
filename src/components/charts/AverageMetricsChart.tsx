@@ -23,15 +23,20 @@ useEffect(() => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      setAverageMetrics(data);
+      const rawData = await response.json();
+      // Format data for TimeSeriesChart: { time: string, averageVisits: number }[]
+      const formattedData: TimeSeriesData = rawData.map((item: any) => ({
+        time: new Date(item.timestamp).toISOString().split('T')[0],
+        averageVisits: item.averageVisits || 0,
+      }));
+      setAverageMetrics(formattedData);
     } catch (error) {
       console.error("Error fetching average metrics:", error);
+      setAverageMetrics([]);
     }
   };
   fetchAverageMetrics();
 }, []);
-  console.log("averageMetrics", averageMetrics);
 
   return <TimeSeriesChart data={averageMetrics} />;
 }

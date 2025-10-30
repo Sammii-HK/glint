@@ -22,13 +22,22 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const referralMetrics = await prisma.referralMetrics.findMany();
+    const referralMetrics = await prisma.referralMetrics.findMany({
+      orderBy: { timestamp: 'desc' },
+    });
+    
+    // Return empty array instead of 404 - better for charts
     if (!referralMetrics.length) {
-      return NextResponse.json({ error: 'No referral metrics found' }, { status: 404 });
+      return NextResponse.json([], { status: 200, headers: corsHeaders });
     }
+    
     return NextResponse.json(referralMetrics, { status: 200, headers: corsHeaders });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error('Error fetching referral metrics:', error);
+    return NextResponse.json(
+      { error: (error as Error).message }, 
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 

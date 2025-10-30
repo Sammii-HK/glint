@@ -8,18 +8,25 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const averageMetrics = await prisma.averageMetrics.findMany();
-    const headers = corsHeaders;
-
-    console.log("averageMetrics", averageMetrics);
+    const averageMetrics = await prisma.averageMetrics.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 100, // Limit to last 100 records for performance
+    });
     
-
-    // if (!averageMetrics.length) {
-    //   return NextResponse.json({ error: 'No average metrics found' }, { status: 404, headers });
-    // }
+    const headers = corsHeadersGet();
+    
+    // Return empty array instead of error if no data
+    if (!averageMetrics.length) {
+      return NextResponse.json([], { status: 200, headers });
+    }
+    
     return NextResponse.json(averageMetrics, { status: 200, headers });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500, headers: corsHeadersGet() });
+    console.error('Error fetching average metrics:', error);
+    return NextResponse.json(
+      { error: (error as Error).message }, 
+      { status: 500, headers: corsHeadersGet() }
+    );
   }
 }
 

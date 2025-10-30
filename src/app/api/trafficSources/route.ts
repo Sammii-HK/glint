@@ -13,18 +13,37 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const trafficSources = await prisma.trafficSource.findMany();
-    console.log('GET /trafficSources called');
-    const formattedData: TrafficSource[] = trafficSources.map(source => ({
-      label: source.sourceName,
-      value: source.visitCount,
-    }));
-    const headers = corsHeadersGet();
-    return NextResponse.json(formattedData, { status: 200, headers });
-  } catch (error) {
-    console.log("GET error", error);
+    const trafficSources = await prisma.trafficSource.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
     
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    // Return empty array if no data (better for charts)
+    if (!trafficSources.length) {
+      return NextResponse.json([], { status: 200, headers: corsHeadersGet() });
+    }
+    
+    // Aggregate by sourceName and sum visitCount
+    const aggregated = trafficSources.reduce((acc, source) => {
+      const existing = acc.find(item => item.label === source.sourceName);
+      if (existing) {
+        existing.value += source.visitCount;
+      } else {
+        acc.push({
+          label: source.sourceName || 'unknown',
+          value: source.visitCount,
+        });
+      }
+      return acc;
+    }, [] as TrafficSource[]);
+    
+    const headers = corsHeadersGet();
+    return NextResponse.json(aggregated, { status: 200, headers });
+  } catch (error) {
+    console.error("GET error", error);
+    return NextResponse.json(
+      { error: (error as Error).message }, 
+      { status: 500, headers: corsHeadersGet() }
+    );
   }
 }
 

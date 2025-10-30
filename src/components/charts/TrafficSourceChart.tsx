@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { PieChartComponent, PieChartDatum } from "./Charts";
+// import { TrafficSource } from "@prisma/client";
+import { TrafficSource } from "@/app/api/trafficSources/route";
 
 
 export function TrafficSourceChart() {
-  const [trafficPatterns, setTrafficPatterns] = useState<PieChartDatum[]>([]);
+  const [trafficSources, setTrafficSources] = useState<PieChartDatum[]>([]);
   useEffect(() => {
     const fetchTrafficSources = async () => {
       try {
@@ -14,19 +16,18 @@ export function TrafficSourceChart() {
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-        const data = await response.json();
-        setTrafficPatterns(data);
+        const data: TrafficSource[] = await response.json();
+        // Data is already formatted by API as { label, value }
+        setTrafficSources(data || []);
       } catch (error) {
-        // setError("Failed to fetch traffic source data.");
         console.error("Error fetching traffic source data:", error);
+        setTrafficSources([]); // Set empty array on error
       }
     };
 
     fetchTrafficSources();
   }, []);
-
-  console.log("trafficPatterns", trafficPatterns);
   
 
-  return <PieChartComponent data={trafficPatterns} title="Traffic Source Breakdown" />;
+  return <PieChartComponent data={trafficSources} title="Traffic Source Breakdown" />;
 }
