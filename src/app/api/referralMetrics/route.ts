@@ -1,7 +1,5 @@
-// import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { NextResponse } from 'next/server';
-const prisma = new PrismaClient();
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 // export async function handler(
 //   req: NextApiRequest,
@@ -16,10 +14,10 @@ const prisma = new PrismaClient();
 //     }
 //   }
 // }
-import { headerOrigin, optionsHandler } from '@/utils/cors';
+import { corsHeaders } from '@/utils/cors';
 
 export async function OPTIONS() {
-  return optionsHandler();
+  return corsHeaders;
 }
 
 export async function GET() {
@@ -28,8 +26,31 @@ export async function GET() {
     if (!referralMetrics.length) {
       return NextResponse.json({ error: 'No referral metrics found' }, { status: 404 });
     }
-    return NextResponse.json(referralMetrics, { status: 200, headers: headerOrigin });
+    return NextResponse.json(referralMetrics, { status: 200, headers: corsHeaders });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  console.log("referralMetrics POST req", req);
+
+  try {
+    const body = await req.json();
+    console.log('POST /referralMetrics with:', body);
+
+    const created = await prisma.referralMetrics.create({
+      data: {
+        timestamp: new Date(),
+        source: body.source,
+        visitCount: body.visitCount || body.visits || 1,
+      }
+    });
+    console.log('Saved referralMetrics:', created);
+
+    return NextResponse.json(created, { status: 201, headers: corsHeaders });
+  } catch (error) {
+    console.error('POST error:', error);
+    return new NextResponse('POST failed', { status: 500 });
   }
 }

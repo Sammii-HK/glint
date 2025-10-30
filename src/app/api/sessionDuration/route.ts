@@ -1,12 +1,10 @@
-import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { optionsHandler } from '@/utils/cors';
+import { corsHeaders } from '@/utils/cors';
+import { prisma } from '@/lib/prisma';
 
 export async function OPTIONS() {
-  return optionsHandler();
+  return corsHeaders;
 }
-
-const prisma = new PrismaClient();
 export async function GET() {
   try {
     const data = await prisma.sessionMetrics.findMany();
