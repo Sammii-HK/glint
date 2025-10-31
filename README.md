@@ -2,6 +2,8 @@
 
 Custom analytics platform built on Next.js Edge Middleware for zero-latency tracking and PostgreSQL for persistence. Deployed on Vercel with full control over data and infrastructure.
 
+<img width="1708" height="980" alt="Screenshot 2025-10-31 at 13 40 16" src="https://github.com/user-attachments/assets/85f2bf4d-811b-4fc9-a96f-109f8ec2a84e" />
+
 ## Architecture
 
 **Edge-First Tracking**: Analytics collection runs on Vercel's Edge Network (300+ locations) via Next.js middleware, executing before requests hit the Node.js runtime. This achieves sub-50ms latency and eliminates cold starts.
