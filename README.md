@@ -1,12 +1,12 @@
 # Glint Analytics
 
-Custom analytics platform built on Next.js Edge Middleware for zero-latency tracking and PostgreSQL for persistence. Deployed on Vercel with full control over data and infrastructure.
+Custom analytics platform built on Next.js Edge Middleware for zero-latency tracking and PostgreSQL for persistence. Self-populating dashboard via Cloudflare Worker cron job that simulates traffic from global edge locations.
 
 <img width="1708" height="980" alt="Screenshot 2025-10-31 at 13 40 16" src="https://github.com/user-attachments/assets/85f2bf4d-811b-4fc9-a96f-109f8ec2a84e" />
 
 ## Architecture
 
-**Edge-First Tracking**: Analytics collection runs on Vercel's Edge Network (300+ locations) via Next.js middleware, executing before requests hit the Node.js runtime. This achieves sub-50ms latency and eliminates cold starts.
+**Edge-First Tracking**: Analytics collection runs on Vercel's Edge Network via Next.js middleware, executing before requests hit the Node.js runtime. This achieves sub-50ms latency and eliminates cold starts.
 
 **Data Flow**: Request → Edge Middleware → API Route (`/api/trackAnalytics`) → PostgreSQL
 
@@ -81,17 +81,9 @@ GET endpoints aggregate and format data for consumption:
 ## Performance
 
 **Edge Middleware**: Sub-50ms execution, runs globally, zero cold starts  
-**Database**: Connection pooling via Prisma singleton pattern  
+**Database**: Connection pooling via Prisma singleton pattern to prevent serverless connection exhaustion  
 **Queries**: Ordered by timestamp desc with limits on high-cardinality endpoints  
 **Non-blocking**: Analytics tracking can fail without impacting page loads
-
-## Production Considerations
-
-- **CORS**: Configurable via `ALLOWED_ORIGINS` env var, defaults to `*`
-- **Logging**: Conditional based on `NODE_ENV` (verbose in dev, minimal in prod)
-- **Validation**: Request validation prevents invalid data insertion
-- **Connection Management**: Prisma singleton prevents serverless connection pool exhaustion
-- **Environment Variables**: `NEXT_PUBLIC_APP_URL` for production URL resolution
 
 ## Stack
 
@@ -102,6 +94,6 @@ GET endpoints aggregate and format data for consumption:
 - **TypeScript**: Strict mode
 - **Deployment**: Vercel (serverless functions + edge)
 
-## Data Population
+## Self-Populating Dashboard with Cloudflare Worker
 
-Optional Cloudflare Worker runs every 10 minutes via cron to populate test data from edge locations worldwide. Worker sends batched analytics events to simulate realistic traffic patterns.
+The dashboard automatically populates with test data using a Cloudflare Worker deployed via Wrangler CLI. Worker runs on a cron schedule (every 10 minutes) and sends batched analytics events (location, referral, traffic source) from global edge locations to simulate realistic traffic patterns.
