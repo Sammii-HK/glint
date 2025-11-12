@@ -25,3 +25,10 @@ crons = ["*/10 * * * *"]
 # Local development only - use secrets for production
 # LIVE_SITE = "https://glint-dun.vercel.app"
 
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
