@@ -32,3 +32,9 @@ head_sampling_rate = 1
 invocation_logs = true
 persist = true
 
+# KV namespace for storing last successful post timestamp
+[[kv_namespaces]]
+binding = "LAST_POST_KV"
+id = "9c7a62e439e942fd8c9d007b4e6e138a"
+preview_id = ""  # For local dev
+
