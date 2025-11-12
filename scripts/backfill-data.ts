@@ -1,56 +1,100 @@
 /**
  * Backfill missing analytics data by sending batches via API
  * Simulates data over the past few hours to fill gaps
- * 
+ *
  * Usage:
  *   npx ts-node scripts/backfill-data.ts
  *   npx ts-node scripts/backfill-data.ts 6    # Backfill last 6 hours
  *   npx ts-node scripts/backfill-data.ts 24    # Backfill last 24 hours
- * 
+ *
  * Or set the GLINT_API_URL env var:
  *   GLINT_API_URL=https://glint-dun.vercel.app/api/trackAnalytics npx ts-node scripts/backfill-data.ts
  */
 
-const API_URL = process.env.GLINT_API_URL || 'http://localhost:3000/api/trackAnalytics';
+export {};
+
+const API_URL =
+  process.env.GLINT_API_URL || "http://localhost:3000/api/trackAnalytics";
 
 // Sample data pools for realistic variety
-const COUNTRIES = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'BR', 'IN', 'MX', 'ES', 'IT', 'NL', 'SE'];
+const COUNTRIES = [
+  "US",
+  "GB",
+  "CA",
+  "AU",
+  "DE",
+  "FR",
+  "JP",
+  "BR",
+  "IN",
+  "MX",
+  "ES",
+  "IT",
+  "NL",
+  "SE",
+];
 const REGIONS = [
-  'California', 'New York', 'Texas', 'London', 'Ontario', 'NSW',
-  'Bavaria', 'Île-de-France', 'Tokyo', 'São Paulo', 'Madrid', 'Lombardy'
+  "California",
+  "New York",
+  "Texas",
+  "London",
+  "Ontario",
+  "NSW",
+  "Bavaria",
+  "Île-de-France",
+  "Tokyo",
+  "São Paulo",
+  "Madrid",
+  "Lombardy",
 ];
 const CITIES = [
-  'San Francisco', 'New York', 'Austin', 'London', 'Toronto', 'Sydney',
-  'Munich', 'Paris', 'Tokyo', 'São Paulo', 'Madrid', 'Milan'
+  "San Francisco",
+  "New York",
+  "Austin",
+  "London",
+  "Toronto",
+  "Sydney",
+  "Munich",
+  "Paris",
+  "Tokyo",
+  "São Paulo",
+  "Madrid",
+  "Milan",
 ];
 const REFERRERS = [
-  'google.com',
-  'twitter.com',
-  'facebook.com',
-  'reddit.com',
-  'github.com',
-  'direct',
-  'news.ycombinator.com',
-  'linkedin.com',
-  'youtube.com',
-  'medium.com',
-  'producthunt.com',
-  'dev.to'
+  "google.com",
+  "twitter.com",
+  "facebook.com",
+  "reddit.com",
+  "github.com",
+  "direct",
+  "news.ycombinator.com",
+  "linkedin.com",
+  "youtube.com",
+  "medium.com",
+  "producthunt.com",
+  "dev.to",
 ];
 
-async function sendAnalytics(type: string, payload: any) {
+async function sendAnalytics(type: string, payload: Record<string, unknown>) {
   try {
     const response = await fetch(API_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ type, payload }),
     });
 
+    // Always read response body to prevent deadlock
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Failed to send ${type}:`, response.status, errorText);
+      console.error(
+        `❌ Failed to send ${type}:`,
+        response.status,
+        responseText
+      );
       return false;
     }
 
@@ -82,68 +126,88 @@ async function backfillHours(hours: number) {
   let totalEvents = 0;
 
   // Generate batches going backwards in time
+  // Process sequentially to avoid overwhelming the API and prevent deadlock
   for (let i = 0; i < totalBatches; i++) {
-    const batchTime = now - (i * batchInterval);
+    const batchTime = now - i * batchInterval;
     const batchDate = new Date(batchTime);
-    
+
     // Generate 3 events per batch (matching worker behavior)
     const country = randomChoice(COUNTRIES);
     const region = randomChoice(REGIONS);
     const city = randomChoice(CITIES);
     const referrer = randomChoice(REFERRERS);
 
-    const results = await Promise.all([
-      sendAnalytics('location', {
-        country,
-        region,
-        city,
-        visitCount: randomInt(1, 5),
-      }),
-      sendAnalytics('referral', {
-        source: referrer,
-        visitCount: randomInt(1, 10),
-      }),
-      sendAnalytics('traffic', {
-        sourceName: referrer,
-        visitCount: randomInt(1, 8),
-      }),
-    ]);
+    // Send events sequentially (not in parallel) to avoid deadlock
+    const locationResult = await sendAnalytics("location", {
+      country,
+      region,
+      city,
+      visitCount: randomInt(1, 5),
+    });
 
-    const batchSuccess = results.filter(Boolean).length;
+    const referralResult = await sendAnalytics("referral", {
+      source: referrer,
+      visitCount: randomInt(1, 10),
+    });
+
+    const trafficResult = await sendAnalytics("traffic", {
+      sourceName: referrer,
+      visitCount: randomInt(1, 8),
+    });
+
+    const batchSuccess = [locationResult, referralResult, trafficResult].filter(
+      Boolean
+    ).length;
     successCount += batchSuccess;
     totalEvents += batchSuccess;
 
     if (batchSuccess > 0) {
       console.log(
-        `✅ Batch ${i + 1}/${totalBatches} (${batchDate.toISOString()}): ${batchSuccess}/3 events`
+        `✅ Batch ${
+          i + 1
+        }/${totalBatches} (${batchDate.toISOString()}): ${batchSuccess}/3 events`
       );
     }
 
-    // Small delay to avoid overwhelming the API
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Delay between batches to avoid overwhelming the API
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   console.log(`\n✨ Backfill complete!`);
   console.log(`   Total batches: ${totalBatches}`);
   console.log(`   Successful events: ${totalEvents}`);
-  console.log(`   Success rate: ${Math.round((successCount / (totalBatches * 3)) * 100)}%\n`);
+  console.log(
+    `   Success rate: ${Math.round(
+      (successCount / (totalBatches * 3)) * 100
+    )}%\n`
+  );
 }
 
 async function main() {
-  const hours = parseInt(process.argv[2] || '6', 10);
-  
-  if (hours < 1 || hours > 48) {
-    console.error('❌ Hours must be between 1 and 48');
+  const hours = parseInt(process.argv[2] || "6", 10);
+
+  if (hours < 1) {
+    console.error("❌ Hours must be at least 1");
     process.exit(1);
   }
 
-  console.log(`📊 Backfilling ${hours} hour${hours !== 1 ? 's' : ''} of analytics data`);
-  console.log(`   This will create ~${hours * 18} events (6 batches/hour × 3 events/batch)\n`);
+  if (hours > 720) {
+    console.error("❌ Hours must be less than 720 (30 days)");
+    process.exit(1);
+  }
+
+  console.log(
+    `📊 Backfilling ${hours} hour${hours !== 1 ? "s" : ""} of analytics data`
+  );
+  console.log(
+    `   This will create ~${
+      hours * 18
+    } events (6 batches/hour × 3 events/batch)\n`
+  );
 
   await backfillHours(hours);
-  
-  console.log('🎉 Backfill complete! Check your dashboard.');
+
+  console.log("🎉 Backfill complete! Check your dashboard.");
 }
 
 main().catch(console.error);
-
