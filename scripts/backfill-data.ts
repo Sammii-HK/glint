@@ -76,6 +76,10 @@ const REFERRERS = [
   "dev.to",
 ];
 
+const DEVICE_TYPES = ["mobile", "desktop", "tablet"];
+const BROWSERS = ["Chrome", "Firefox", "Safari", "Edge", "Opera"];
+const CONNECTION_TYPES = ["4G", "5G", "WiFi", "3G"];
+
 async function sendAnalytics(type: string, payload: Record<string, unknown>) {
   try {
     const response = await fetch(API_URL, {
@@ -138,7 +142,16 @@ async function backfillHours(hours: number) {
     const referrer = randomChoice(REFERRERS);
 
     // Send events sequentially (not in parallel) to avoid deadlock
+    // Include historical timestamp to backfill past data
+    const hour = batchDate.getUTCHours();
+    const dayOfWeek = batchDate.getUTCDay();
+    const deviceType = randomChoice(DEVICE_TYPES);
+    const browser = randomChoice(BROWSERS);
+    const connectionType = randomChoice(CONNECTION_TYPES);
+    const visitCount = randomInt(1, 10);
+
     const locationResult = await sendAnalytics("location", {
+      timestamp: batchDate.toISOString(),
       country,
       region,
       city,
@@ -146,6 +159,7 @@ async function backfillHours(hours: number) {
     });
 
     const referralResult = await sendAnalytics("referral", {
+      timestamp: batchDate.toISOString(),
       source: referrer,
       visitCount: randomInt(1, 10),
     });
@@ -155,9 +169,26 @@ async function backfillHours(hours: number) {
       visitCount: randomInt(1, 8),
     });
 
-    const batchSuccess = [locationResult, referralResult, trafficResult].filter(
-      Boolean
-    ).length;
+    // Also send averageMetrics for the main dashboard chart
+    const averageResult = await sendAnalytics("average", {
+      timestamp: batchDate.toISOString(),
+      hour,
+      dayOfWeek,
+      averageVisits: visitCount,
+      averageSessionDuration: randomInt(30, 600),
+      averageNetworkSpeed: randomInt(10, 150),
+      deviceType,
+      browser,
+      browserCount: randomInt(1, 100),
+      connectionType,
+    });
+
+    const batchSuccess = [
+      locationResult,
+      referralResult,
+      trafficResult,
+      averageResult,
+    ].filter(Boolean).length;
     successCount += batchSuccess;
     totalEvents += batchSuccess;
 
@@ -165,7 +196,7 @@ async function backfillHours(hours: number) {
       console.log(
         `✅ Batch ${
           i + 1
-        }/${totalBatches} (${batchDate.toISOString()}): ${batchSuccess}/3 events`
+        }/${totalBatches} (${batchDate.toISOString()}): ${batchSuccess}/4 events`
       );
     }
 
@@ -178,7 +209,7 @@ async function backfillHours(hours: number) {
   console.log(`   Successful events: ${totalEvents}`);
   console.log(
     `   Success rate: ${Math.round(
-      (successCount / (totalBatches * 3)) * 100
+      (successCount / (totalBatches * 4)) * 100
     )}%\n`
   );
 }
@@ -201,8 +232,8 @@ async function main() {
   );
   console.log(
     `   This will create ~${
-      hours * 18
-    } events (6 batches/hour × 3 events/batch)\n`
+      hours * 24
+    } events (6 batches/hour × 4 events/batch)\n`
   );
 
   await backfillHours(hours);

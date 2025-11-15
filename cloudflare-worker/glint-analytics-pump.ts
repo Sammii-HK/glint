@@ -274,40 +274,42 @@ const worker = {
 		const city = randomChoice(CITIES);
 		const referrer = randomChoice(REFERRERS);
 
-		// Generate multiple analytics events
-		const results = await Promise.all([
-			sendAnalytics(
-				apiUrl,
-				"location",
-				{
-					country,
-					region,
-					city,
-					visitCount: randomInt(1, 5),
-				},
-				env.GLINT_API_KEY
-			),
-			sendAnalytics(
-				apiUrl,
-				"referral",
-				{
-					source: referrer,
-					visitCount: randomInt(1, 10),
-				},
-				env.GLINT_API_KEY
-			),
-			sendAnalytics(
-				apiUrl,
-				"traffic",
-				{
-					sourceName: referrer,
-					visitCount: randomInt(1, 8),
-				},
-				env.GLINT_API_KEY
-			),
-		]);
+		// Generate multiple analytics events sequentially to avoid deadlock
+		const locationResult = await sendAnalytics(
+			apiUrl,
+			"location",
+			{
+				country,
+				region,
+				city,
+				visitCount: randomInt(1, 5),
+			},
+			env.GLINT_API_KEY
+		);
 
-		const successCount = results.filter(Boolean).length;
+		const referralResult = await sendAnalytics(
+			apiUrl,
+			"referral",
+			{
+				source: referrer,
+				visitCount: randomInt(1, 10),
+			},
+			env.GLINT_API_KEY
+		);
+
+		const trafficResult = await sendAnalytics(
+			apiUrl,
+			"traffic",
+			{
+				sourceName: referrer,
+				visitCount: randomInt(1, 8),
+			},
+			env.GLINT_API_KEY
+		);
+
+		const successCount = [locationResult, referralResult, trafficResult].filter(
+			Boolean
+		).length;
 
 		return new Response(
 			JSON.stringify({
@@ -353,43 +355,44 @@ const worker = {
 			const city = randomChoice(CITIES);
 			const referrer = randomChoice(REFERRERS);
 
-			const batchResults = await Promise.all([
-				sendAnalytics(
-					apiUrl,
-					"location",
-					{
-						country,
-						region,
-						city,
-						visitCount: randomInt(1, 5),
-					},
-					env.GLINT_API_KEY
-				),
-				sendAnalytics(
-					apiUrl,
-					"referral",
-					{
-						source: referrer,
-						visitCount: randomInt(1, 10),
-					},
-					env.GLINT_API_KEY
-				),
-				sendAnalytics(
-					apiUrl,
-					"traffic",
-					{
-						sourceName: referrer,
-						visitCount: randomInt(1, 8),
-					},
-					env.GLINT_API_KEY
-				),
-			]);
+			// Send events sequentially to avoid deadlock from too many concurrent requests
+			const locationResult = await sendAnalytics(
+				apiUrl,
+				"location",
+				{
+					country,
+					region,
+					city,
+					visitCount: randomInt(1, 5),
+				},
+				env.GLINT_API_KEY
+			);
 
-			if (batchResults[0]) addedData.locations++;
-			if (batchResults[1]) addedData.referrals++;
-			if (batchResults[2]) addedData.traffic++;
+			const referralResult = await sendAnalytics(
+				apiUrl,
+				"referral",
+				{
+					source: referrer,
+					visitCount: randomInt(1, 10),
+				},
+				env.GLINT_API_KEY
+			);
 
-			results.push(...batchResults);
+			const trafficResult = await sendAnalytics(
+				apiUrl,
+				"traffic",
+				{
+					sourceName: referrer,
+					visitCount: randomInt(1, 8),
+				},
+				env.GLINT_API_KEY
+			);
+
+			if (locationResult) addedData.locations++;
+			if (referralResult) addedData.referrals++;
+			if (trafficResult) addedData.traffic++;
+
+			results.push(locationResult, referralResult, trafficResult);
 		}
 
 		const successCount = results.filter((r) => r === true).length;

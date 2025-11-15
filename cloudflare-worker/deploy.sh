@@ -4,6 +4,16 @@
 
 cd "$(dirname "$0")"
 
+# Kill any existing wrangler processes to prevent conflicts
+echo "🧹 Checking for existing wrangler processes..."
+if pgrep -f "wrangler dev" > /dev/null || pgrep -f "workerd serve" > /dev/null; then
+    echo "⚠️  Found existing wrangler processes, killing them..."
+    pkill -f "wrangler dev" 2>/dev/null
+    pkill -f "workerd serve" 2>/dev/null
+    sleep 1
+    echo "✅ Cleaned up existing processes"
+fi
+
 echo "🚀 Deploying Glint Analytics Worker to Cloudflare..."
 
 # Check if wrangler is installed

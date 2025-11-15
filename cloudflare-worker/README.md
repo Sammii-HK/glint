@@ -128,6 +128,27 @@ Then manually trigger:
 curl http://localhost:8787
 ```
 
+## Troubleshooting
+
+### Kill Stalled Wrangler Processes
+
+If you have stalled wrangler processes causing conflicts:
+
+```bash
+# From project root
+npm run kill-wrangler
+
+# Or directly
+cd cloudflare-worker
+./kill-wrangler.sh
+```
+
+This will kill any running `wrangler dev` or `workerd serve` processes.
+
+### Deploy Script Auto-Cleanup
+
+The `deploy.sh` script automatically checks for and kills existing processes before deploying, so you shouldn't need to manually kill them.
+
 ## Monitoring
 
 Check Cloudflare Dashboard > Workers & Pages > Your Worker > Logs to see:
