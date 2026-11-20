@@ -10,7 +10,7 @@ A fixed synthetic example is the default. Stored snapshot selection is explicit.
 
 ## Verification
 
-- 18 tests passed: eight shared icon regressions, nine data/request-state regressions and a test of actual light/dark CSS text and focus contrast.
+- 19 tests passed: eight shared icon regressions, nine data/request-state regressions, a test of actual light/dark CSS text and focus contrast, and actual installed chart rendering for axes and plotted marks.
 - Full `eslint src` and icon lint passed, with zero blocking violations. Four console logging symbols remain review-only, not rendered interface icons.
 - TypeScript and the normal Next production build passed.
 - Compatible dependency patches: Next 15.5.29, matched Next lint configuration, TypeScript ESLint 8.73, PostCSS 8.5.33, brace-expansion 1.1.22 and Sucrase 3.35.1. Final full and production audits each have zero findings.
@@ -24,3 +24,9 @@ A fixed synthetic example is the default. Stored snapshot selection is explicit.
 Collection is unchanged. Its four asynchronous ingestion calls, permissive public routes, header assumptions, random session/network fields, synthetic worker and seed data, delivery guarantees, identity, tenancy and retention need a separate backend pass before treating this as production analytics. Sample mode does not itself disable collection. No latency, audience or conversion improvement is claimed.
 
 The preview is local and unreleased. Source tests cover stored-state behaviour with mocks; real database/API integration was deliberately not exercised. The old repository screenshot has not been represented as current. Normal local commit was used without bypassing hooks; the isolated checkout has no configured active hook path, so the manual checks above are the verification evidence.
+
+## Chart capture follow-up
+
+The first screenshot review found blank plot areas, so those captures were withheld and replaced. Recharts 2.15.1 resolved react-is 18 beside React 19; a scoped override now aligns react-is to 19.3.1. The library documents this requirement for React 19 at https://github.com/recharts/recharts/releases/tag/v2.15.0. The server-rendered chart regression passed with both old and new dependency versions, so it is not evidence that the mismatch alone caused the browser issue. Initial layout/capture timing was not conclusively isolated.
+
+The final rebuilt production preview was checked again in Chrome: desktop and 390px each contained one plotted area path, 24 hourly bars, visible axes and correct date controls. Phone document and scroll widths were both 390px. Fresh desktop/phone screenshots replace the earlier blank captures. Browser verification used only synthetic data with collection disabled. Full build, TypeScript, 19 regressions and zero-audit dependency install passed after this update.
