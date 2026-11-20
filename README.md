@@ -1,99 +1,33 @@
-# Glint Analytics
+# Glint
 
-Custom analytics platform built on Next.js Edge Middleware for zero-latency tracking and PostgreSQL for persistence. Self-populating dashboard via Cloudflare Worker cron job that simulates traffic from global edge locations.
+An analytics dashboard prototype built with Next.js, TypeScript, Recharts and PostgreSQL through Prisma. The interface opens with a fixed, clearly labelled synthetic dataset so the charts can be explored without reading stored metrics.
 
-<img width="1708" height="980" alt="Screenshot 2025-10-31 at 13 40 16" src="https://github.com/user-attachments/assets/85f2bf4d-811b-4fc9-a96f-109f8ec2a84e" />
+## Dashboard
 
-## Architecture
+Switch between seven and fourteen captured UTC dates, inspect chart values in accessible tables, and explore source, country, device, browser and hourly breakdowns. The responsive layout supports light and dark system preferences, reduced motion and keyboard focus. All interface icons use Lucide.
 
-**Edge-First Tracking**: Analytics collection runs on Vercel's Edge Network via Next.js middleware, executing before requests hit the Node.js runtime. This achieves sub-50ms latency and eliminates cold starts.
+The **Stored snapshot** control explicitly loads the existing six metric endpoints. Panels have loading, empty and retryable error states, including a ten-second request limit. Failed responses never fall back to illustrative data.
 
-**Data Flow**: Request → Edge Middleware → API Route (`/api/trackAnalytics`) → PostgreSQL
+These endpoints have independent query windows. Daily visits use the latest 100 metric records; hourly and browser breakdowns use the latest 500. Device values are averages of stored percentages, not measured visitor shares. The panels do not establish a shared cohort or unique visitor count. Seed scripts and the Cloudflare worker can generate synthetic records, so stored data may also contain examples.
 
-Middleware extracts geo-location headers (`x-vercel-ip-country`, `x-vercel-ip-region`, `x-vercel-ip-city`), user-agent, and referrer, then dispatches analytics payloads asynchronously to avoid blocking response delivery.
+## Collection architecture
 
-## Implementation
+Existing middleware reads request headers and dispatches four asynchronous POST requests to the ingestion API. That API uses Prisma to persist separate metric records. Header geography depends on the hosting environment. Browser parsing, event delivery, tenancy, consent and retention need further production work.
 
-### Edge Middleware
+The existing collector also generates random session-duration and network-speed values. The dashboard omits those values because they are not measurements. Asynchronous dispatch does not establish guaranteed delivery, zero overhead or a measured latency improvement. No performance benchmark is claimed.
 
-```typescript
-// src/middleware.ts
-export async function middleware(req: NextRequest) {
-  const geo = {
-    city: req.headers.get('x-vercel-ip-city') || 'unknown',
-    country: req.headers.get('x-vercel-ip-country') || 'unknown',
-    region: req.headers.get('x-vercel-ip-region') || 'unknown'
-  };
+Sample dashboard mode only controls metric reads. It does not automatically disable this separate collector. For a local visual preview without ingestion, run with `DISABLE_ANALYTICS_TRACKING=true`. Do not point a preview at a production database.
 
-  const payloads = [
-    { type: 'location', payload: locationData },
-    { type: 'referral', payload: referralData },
-    { type: 'traffic', payload: trafficData },
-  ];
+## Local checks
 
-  // Fire-and-forget: analytics never blocks page loads
-  Promise.all(payloads.map(data => fetch(TRACK_ANALYTICS_ENDPOINT, {...})));
-  return NextResponse.next();
-}
+Use a supported Node version (this pass used Node 24). Dependency lifecycle scripts normally generate the Prisma client. Client generation reads the checked-out schema and does not require a database connection; migrations, seeds and backfills are separate actions and must target a confirmed development database.
+
+```sh
+npm run test
+npm run lint
+npm run typecheck
+npm run build
+DISABLE_ANALYTICS_TRACKING=true npm run start -- --port 4808
 ```
 
-**Key Design Decisions**:
-- Non-blocking: Analytics failures don't affect user experience
-- Edge runtime limitations: Can't access Prisma directly, so we call API routes
-- Header-based geo: Uses Vercel's automatic geo-headers instead of IP lookups
-- Environment-aware: URL resolution via env vars or request headers
-
-### Database Layer
-
-Prisma ORM with singleton pattern to prevent connection exhaustion in serverless:
-
-```typescript
-// src/lib/prisma.ts
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-}
-```
-
-**Schema Design**: Denormalized time-series data with separate models for location, referral, traffic, and average metrics. Trade-off: slightly more storage for simpler queries and better read performance.
-
-### API Routes
-
-Unified `/api/trackAnalytics` endpoint accepts typed payloads:
-
-```typescript
-type TrackRequestBody = {
-  type: 'average' | 'location' | 'referral' | 'traffic';
-  payload: AverageMetricsInput | LocationMetricsInput | ...;
-};
-```
-
-GET endpoints aggregate and format data for consumption:
-- `/api/trafficSources`: Aggregates by `sourceName`, sums `visitCount`
-- `/api/referralMetrics`: Returns raw records (frontend aggregates)
-- `/api/averageMetrics`: Limits to last 100 records for performance
-
-**Error Handling**: Returns empty arrays instead of 404s to prevent chart rendering failures. Validation includes required field checks and Prisma-specific error handling (P2002 for duplicates).
-
-## Performance
-
-**Edge Middleware**: Sub-50ms execution, runs globally, zero cold starts  
-**Database**: Connection pooling via Prisma singleton pattern to prevent serverless connection exhaustion  
-**Queries**: Ordered by timestamp desc with limits on high-cardinality endpoints  
-**Non-blocking**: Analytics tracking can fail without impacting page loads
-
-## Stack
-
-- **Runtime**: Next.js 15 (App Router)
-- **Edge**: Vercel Edge Network
-- **Database**: PostgreSQL via Prisma ORM
-- **Charts**: Recharts
-- **TypeScript**: Strict mode
-- **Deployment**: Vercel (serverless functions + edge)
-
-## Self-Populating Dashboard with Cloudflare Worker
-
-The dashboard automatically populates with test data using a Cloudflare Worker deployed via Wrangler CLI. Worker runs on a cron schedule (every 10 minutes) and sends batched analytics events (location, referral, traffic source) from global edge locations to simulate realistic traffic patterns.
+The normal test and lint commands include the shared Lucide icon guard. Tests exercise aggregation, invalid responses, partial failures, stalled requests and coherent illustrative totals. See `docs/quality/dashboard-review-20261120.md` for the verified scope and remaining limitations.
