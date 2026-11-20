@@ -10,7 +10,7 @@ test('installed chart dependencies recognise React elements and render real axes
  const rows = [{ label: 'First', value: 84 }, { label: 'Second', value: 112 }];
  for (const [Chart, Mark, shape] of [[AreaChart, Area, 'recharts-area-area'], [BarChart, Bar, 'recharts-bar-rectangle']] as const) {
   const svg = renderToStaticMarkup(h(Chart, { width: 640, height: 245, data: rows },
-   h(XAxis, { dataKey: 'label' }), h(YAxis), h(Mark, { dataKey: 'value', isAnimationActive: false })));
+   h(XAxis, { dataKey: 'label' }), h(YAxis, {}), h(Mark, { dataKey: 'value', isAnimationActive: false })));
   assert.match(svg, /First/);
   assert.match(svg, /Second/);
   assert.ok(svg.includes(shape), `Missing ${shape}`);
