@@ -15,17 +15,20 @@ import {
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Clock3,
   Database,
   Globe2,
   Layers3,
   LoaderCircle,
+  Link2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
 import {
   DEMO_PANELS,
   PANEL_INFO,
-  loadStoredPanels,
+  PANEL_KEYS,
+  loadSnapshot,
   loadingPanels,
   total,
   visibleVisits,
@@ -35,6 +38,16 @@ import {
 } from "@/lib/dashboard";
 
 const number = new Intl.NumberFormat("en-GB");
+const share = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const seconds = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
+const percent = (value: number) => `${share.format(value)}%`;
+const duration = (value: number) => {
+  const whole = Math.round(value);
+  const minutes = Math.floor(whole / 60);
+  return minutes
+    ? `${minutes}m ${String(whole % 60).padStart(2, "0")}s`
+    : `${whole}s`;
+};
 const date = (label: string) =>
   new Date(label + "T00:00:00Z").toLocaleDateString("en-GB", {
     day: "numeric",
@@ -86,54 +99,60 @@ function PanelMessage({
 
 function Breakdown({
   panel,
-  unit = "",
+  format = (value) => number.format(value),
   geography = false,
+  table,
   onRetry,
 }: {
   panel: Panel;
-  unit?: string;
+  format?: (value: number) => string;
   geography?: boolean;
+  table?: string;
   onRetry: () => void;
 }) {
   if (panel.status !== "ready" || !panel.rows.length)
     return <PanelMessage panel={panel} onRetry={onRetry} />;
   const max = Math.max(...panel.rows.map((row) => row.value), 1);
   return (
-    <ol className="breakdown-list">
-      {panel.rows.slice(0, 8).map((row, index) => (
-        <li key={row.label}>
-          <div className="breakdown-label">
-            <span>{geography ? country(row.label) : row.label}</span>
-            <strong>
-              {number.format(row.value)}
-              {unit}
-            </strong>
-          </div>
-          <div className="breakdown-track" aria-hidden>
-            <span
-              style={{
-                width: `${(row.value / max) * 100}%`,
-                backgroundColor: `var(--series-${index % 4})`,
-              }}
-            />
-          </div>
-        </li>
-      ))}
-      {panel.rows.length > 8 && (
-        <li className="muted">
-          Showing the largest 8 of {panel.rows.length} categories.
-        </li>
+    <>
+      <ol className="breakdown-list">
+        {panel.rows.slice(0, 8).map((row, index) => (
+          <li key={row.label}>
+            <div className="breakdown-label">
+              <span>{geography ? country(row.label) : row.label}</span>
+              <strong>{format(row.value)}</strong>
+            </div>
+            <div className="breakdown-track" aria-hidden>
+              <span
+                style={{
+                  width: `${(row.value / max) * 100}%`,
+                  backgroundColor: `var(--series-${index % 4})`,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+        {panel.rows.length > 8 && (
+          <li className="muted">
+            Showing the largest 8 of {panel.rows.length} categories.
+          </li>
+        )}
+      </ol>
+      {table && (
+        <DataTable rows={panel.rows} unit={table} format={format} />
       )}
-    </ol>
+    </>
   );
 }
 
 function DataTable({
   rows,
   unit = "events",
+  format = (value) => number.format(value),
 }: {
   rows: Datum[];
   unit?: string;
+  format?: (value: number) => string;
 }) {
   return (
     <details className="data-details">
@@ -151,7 +170,7 @@ function DataTable({
             {rows.map((row) => (
               <tr key={row.label}>
                 <th scope="row">{row.label}</th>
-                <td>{number.format(row.value)}</td>
+                <td>{format(row.value)}</td>
               </tr>
             ))}
           </tbody>
@@ -162,31 +181,42 @@ function DataTable({
 }
 
 export default function Dashboard() {
-  const [mode, setMode] = useState<"demo" | "stored">("demo");
-  const [panels, setPanels] = useState<Panels>(DEMO_PANELS);
+  // Stored data is the default view, as on the live site. If the stored
+  // snapshot fails or has no rows, the demo dataset is shown with a note.
+  const [mode, setMode] = useState<"demo" | "stored">("stored");
+  const [panels, setPanels] = useState<Panels>(loadingPanels);
+  const [fallback, setFallback] = useState<string | null>(null);
   const [count, setCount] = useState(14);
   const [revision, setRevision] = useState(0);
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
-  const gradient = "visits" + useId().replace(/:/g, "");
+  const id = useId().replace(/:/g, "");
+  const gradient = "visits" + id;
+  const sessionGradient = "sessions" + id;
   useEffect(() => {
     if (mode === "demo") return;
     const controller = new AbortController();
-    loadStoredPanels(fetch, controller.signal).then((result) => {
-      if (!controller.signal.aborted) {
-        setPanels(result);
-        setLoadedAt(
-          new Date().toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        );
+    loadSnapshot(fetch, controller.signal).then((outcome) => {
+      if (controller.signal.aborted) return;
+      if (outcome.kind === "fallback") {
+        setFallback(outcome.message);
+        setPanels(DEMO_PANELS);
+        setMode("demo");
+        return;
       }
+      setPanels(outcome.panels);
+      setLoadedAt(
+        new Date().toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
     });
     return () => controller.abort();
   }, [mode, revision]);
   const selectMode = (next: "demo" | "stored") => {
     if (next === mode) return;
     setMode(next);
+    setFallback(null);
     setLoadedAt(null);
     setPanels(next === "demo" ? DEMO_PANELS : loadingPanels());
   };
@@ -196,7 +226,9 @@ export default function Dashboard() {
       setRevision((value) => value + 1);
     }
   };
+  const retryStored = () => selectMode("stored");
   const visits = visibleVisits(panels.visits, count);
+  const sessions = visibleVisits(panels.sessions, 14);
   const busy = Object.values(panels).some(
     (panel) => panel.status === "loading",
   );
@@ -261,6 +293,7 @@ export default function Dashboard() {
         </a>
         <nav aria-label="Dashboard sections">
           <a href="#traffic">Traffic</a>
+          <a href="#sessions">Sessions</a>
           <a href="#sources">Sources</a>
           <a href="#technology">Technology</a>
         </nav>
@@ -298,22 +331,40 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <section className="provenance-note" aria-label="Data provenance">
+        <section
+          className="provenance-note"
+          aria-label="Data provenance"
+          aria-live="polite"
+        >
           <div className="provenance-icon">
             <Layers3 size={18} aria-hidden />
           </div>
           <div>
             <strong>
-              {mode === "demo"
-                ? "You are viewing the demo dataset."
-                : "You are viewing stored records."}
+              {fallback
+                ? "Showing the demo dataset."
+                : mode === "demo"
+                  ? "You are viewing the demo dataset."
+                  : "You are viewing stored records."}
             </strong>
             <p>
-              {mode === "demo"
-                ? "Two weeks of sample traffic, 6 to 19 November 2026, to show how each view reads."
-                : "Events from the collector, including simulated traffic. Each panel reads its own recent window."}
+              {fallback
+                ? `Stored data is unavailable right now. ${fallback} These are sample records, not stored visits.`
+                : mode === "demo"
+                  ? "Two weeks of sample traffic, 6 to 19 November 2026, to show how each view reads."
+                  : "Events from the collector, including simulated traffic. Each panel reads its own recent window."}
             </p>
           </div>
+          {fallback && (
+            <button
+              type="button"
+              className="refresh-button"
+              onClick={retryStored}
+            >
+              <RefreshCw size={15} aria-hidden />
+              Try stored data again
+            </button>
+          )}
           {mode === "stored" && (
             <button
               type="button"
@@ -473,6 +524,135 @@ export default function Dashboard() {
           </article>
         </section>
         <section
+          id="sessions"
+          className="chart-grid"
+          aria-label="Sessions and referrals"
+        >
+          <article className="chart-card trend-card">
+            <div className="card-heading">
+              <div>
+                <p className="eyebrow">How long visits last</p>
+                <h2>Session duration</h2>
+              </div>
+              <Clock3 size={20} aria-hidden />
+            </div>
+            <p className="card-description">{scope("sessions")}</p>
+            {panels.sessions.status === "ready" && sessions.length > 0 ? (
+              <>
+                <div
+                  className="chart-canvas"
+                  role="group"
+                  aria-label={`Average session length across ${sessions.length} dates. Values are available in the data table.`}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={sessions}
+                      margin={{ top: 12, right: 8, left: -22, bottom: 0 }}
+                      accessibilityLayer
+                    >
+                      <defs>
+                        <linearGradient
+                          id={sessionGradient}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="var(--chart-secondary)"
+                            stopOpacity={0.3}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="var(--chart-secondary)"
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        vertical={false}
+                        stroke="var(--chart-grid)"
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tickFormatter={date}
+                        axisLine={false}
+                        tickLine={false}
+                        minTickGap={28}
+                        tick={{ fill: "var(--muted)", fontSize: 11 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(value) =>
+                          seconds.format(Number(value))
+                        }
+                        tick={{ fill: "var(--muted)", fontSize: 11 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 10,
+                          color: "var(--foreground)",
+                        }}
+                        labelFormatter={(value) => date(String(value))}
+                        formatter={(value) => [
+                          duration(Number(value)),
+                          "Average session",
+                        ]}
+                      />
+                      <Area
+                        dataKey="value"
+                        type="monotone"
+                        stroke="var(--chart-secondary)"
+                        strokeWidth={2.5}
+                        fill={`url(#${sessionGradient})`}
+                        isAnimationActive={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="chart-footnote">
+                  <span className="series-label secondary">
+                    <span aria-hidden />
+                    Average session, in seconds
+                  </span>
+                  <p>
+                    Across these dates{" "}
+                    <strong>
+                      {duration(total(sessions) / sessions.length)}
+                    </strong>
+                  </p>
+                </div>
+                <DataTable
+                  rows={sessions}
+                  unit="seconds"
+                  format={(value) => seconds.format(value)}
+                />
+              </>
+            ) : (
+              <PanelMessage panel={panels.sessions} onRetry={retry} />
+            )}
+          </article>
+          <article className="chart-card">
+            <div className="card-heading">
+              <div>
+                <p className="eyebrow">Who sent the visit</p>
+                <h2>Referral sources</h2>
+              </div>
+              <Link2 size={20} aria-hidden />
+            </div>
+            <p className="card-description">{scope("referrals")}</p>
+            <Breakdown
+              panel={panels.referrals}
+              table="visits"
+              onRetry={retry}
+            />
+          </article>
+        </section>
+        <section
           id="sources"
           className="chart-grid lower-grid"
           aria-label="Location and hourly records"
@@ -562,7 +742,12 @@ export default function Dashboard() {
             <p className="eyebrow">Screen sizes</p>
             <h2>Devices</h2>
             <p className="card-description">{scope("devices")}</p>
-            <Breakdown panel={panels.devices} unit="%" onRetry={retry} />
+            <Breakdown
+              panel={panels.devices}
+              format={percent}
+              table="per cent of the device total"
+              onRetry={retry}
+            />
           </article>
           <article className="chart-card">
             <p className="eyebrow">Browser labels</p>
@@ -578,8 +763,10 @@ export default function Dashboard() {
           </p>
           <p role="status">
             {mode === "demo"
-              ? "Demo dataset"
-              : `${ready} of 6 panels loaded${loadedAt ? ` · updated ${loadedAt}` : ""}`}
+              ? fallback
+                ? "Demo dataset · stored data unavailable"
+                : "Demo dataset"
+              : `${ready} of ${PANEL_KEYS.length} panels loaded${loadedAt ? ` · updated ${loadedAt}` : ""}`}
           </p>
         </footer>
       </main>

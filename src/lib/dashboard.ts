@@ -1,6 +1,8 @@
 export type PanelKey =
   | "visits"
+  | "sessions"
   | "sources"
+  | "referrals"
   | "locations"
   | "devices"
   | "browsers"
@@ -14,7 +16,9 @@ export type Panel = {
 export type Panels = Record<PanelKey, Panel>;
 export const PANEL_KEYS: PanelKey[] = [
   "visits",
+  "sessions",
   "sources",
+  "referrals",
   "locations",
   "devices",
   "browsers",
@@ -29,10 +33,21 @@ export const PANEL_INFO: Record<
     endpoint: "/api/averageMetrics",
     scope: "Visits by UTC date, from the latest 100 records.",
   },
+  sessions: {
+    title: "Session duration",
+    endpoint: "/api/sessionDuration",
+    scope:
+      "Average session length in seconds by UTC date, for the latest 14 dates with stored sessions.",
+  },
   sources: {
     title: "Traffic sources",
     endpoint: "/api/trafficSources",
     scope: "Visits by source, across all stored records.",
+  },
+  referrals: {
+    title: "Referral sources",
+    endpoint: "/api/referralMetrics",
+    scope: "Visits by referring address, across all stored records.",
   },
   locations: {
     title: "Locations",
@@ -42,7 +57,7 @@ export const PANEL_INFO: Record<
   devices: {
     title: "Devices",
     endpoint: "/api/deviceMetrics",
-    scope: "Average recorded share for each device type.",
+    scope: "Each device type's share of the recorded device totals.",
   },
   browsers: {
     title: "Browsers",
@@ -60,12 +75,63 @@ export function loadingPanels(): Panels {
   const panel = (): Panel => ({ status: "loading", rows: [] });
   return {
     visits: panel(),
+    sessions: panel(),
     sources: panel(),
+    referrals: panel(),
     locations: panel(),
     devices: panel(),
     browsers: panel(),
     hours: panel(),
   };
+}
+
+function dateLabel(value: unknown, message: string): string {
+  if (
+    !(typeof value === "string" || value instanceof Date) ||
+    !Number.isFinite(new Date(value).getTime())
+  )
+    throw new Error(message);
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function textLabel(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value.trim() : "Unknown";
+}
+
+// Reads one record from a route response into a label and a raw value.
+function readRecord(key: PanelKey, row: Record<string, unknown>) {
+  switch (key) {
+    case "visits":
+      return {
+        label: dateLabel(row.timestamp, "A metric timestamp could not be read."),
+        raw: row.averageVisits,
+      };
+    case "sessions":
+      return {
+        label: dateLabel(row.time, "A session timestamp could not be read."),
+        raw: row.averageSessionDuration,
+      };
+    case "hours":
+      if (
+        typeof row.hour !== "number" ||
+        !Number.isInteger(row.hour) ||
+        row.hour < 0 ||
+        row.hour > 23
+      )
+        throw new Error("An hour bucket could not be read.");
+      return {
+        label: String(row.hour).padStart(2, "0") + ":00",
+        raw: row.visits,
+      };
+    case "locations":
+      return { label: textLabel(row.country), raw: row.visitCount };
+    case "referrals":
+      return { label: textLabel(row.source), raw: row.visitCount };
+    case "browsers":
+      return { label: textLabel(row.browser), raw: row.count };
+    default:
+      return { label: textLabel(row.label), raw: row.value };
+  }
 }
 
 export function normaliseRows(key: PanelKey, data: unknown): Datum[] {
@@ -76,60 +142,28 @@ export function normaliseRows(key: PanelKey, data: unknown): Datum[] {
   for (const item of data) {
     if (!item || typeof item !== "object")
       throw new Error("A metrics record could not be read.");
-    const row = item as Record<string, unknown>;
-    let label: string;
-    let raw: unknown;
-    if (key === "visits") {
-      if (
-        typeof row.timestamp !== "string" ||
-        !Number.isFinite(Date.parse(row.timestamp))
-      )
-        throw new Error("A metric timestamp could not be read.");
-      label = new Date(row.timestamp).toISOString().slice(0, 10);
-      raw = row.averageVisits;
-    } else if (key === "hours") {
-      if (
-        typeof row.hour !== "number" ||
-        !Number.isInteger(row.hour) ||
-        row.hour < 0 ||
-        row.hour > 23
-      )
-        throw new Error("An hour bucket could not be read.");
-      label = String(row.hour).padStart(2, "0") + ":00";
-      raw = row.visits;
-    } else {
-      const field =
-        key === "locations"
-          ? "country"
-          : key === "browsers"
-            ? "browser"
-            : "label";
-      label =
-        typeof row[field] === "string" && (row[field] as string).trim()
-          ? (row[field] as string).trim()
-          : "Unknown";
-      raw =
-        row[
-          key === "locations"
-            ? "visitCount"
-            : key === "browsers"
-              ? "count"
-              : "value"
-        ];
-    }
+    const { label, raw } = readRecord(key, item as Record<string, unknown>);
     if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0)
       throw new Error("A metric value could not be read.");
-    if (key === "devices" && raw > 100)
-      throw new Error("A device percentage is outside its supported range.");
     totals.set(label, (totals.get(label) ?? 0) + raw);
     samples.set(label, (samples.get(label) ?? 0) + 1);
   }
+  // Session lengths are averaged per date; counts are summed. Device records
+  // are summed per type and shown as a share of the summed total, as live does.
+  const grand = [...totals.values()].reduce((sum, value) => sum + value, 0);
   const rows = [...totals].map(([label, value]) => ({
     label,
-    value: key === "devices" ? value / samples.get(label)! : value,
+    value:
+      key === "sessions"
+        ? value / samples.get(label)!
+        : key === "devices"
+          ? grand > 0
+            ? (value / grand) * 100
+            : 0
+          : value,
   }));
   return rows.sort(
-    key === "visits" || key === "hours"
+    key === "visits" || key === "sessions" || key === "hours"
       ? (a, b) => a.label.localeCompare(b.label)
       : (a, b) => b.value - a.value || a.label.localeCompare(b.label),
   );
@@ -192,6 +226,38 @@ export async function loadStoredPanels(
   }
 }
 
+export type SnapshotOutcome =
+  | { kind: "stored"; panels: Panels }
+  | { kind: "fallback"; reason: "failed" | "empty"; message: string };
+
+// The stored snapshot is used when at least one panel has rows. When every
+// panel failed or came back empty, the dashboard falls back to the demo dataset.
+export function resolveSnapshot(panels: Panels): SnapshotOutcome {
+  const list = PANEL_KEYS.map((key) => panels[key]);
+  if (list.some((panel) => panel.status === "ready" && panel.rows.length > 0))
+    return { kind: "stored", panels };
+  const failed = list.find((panel) => panel.status === "error");
+  if (failed)
+    return {
+      kind: "fallback",
+      reason: "failed",
+      message: failed.error ?? "The stored snapshot could not be loaded.",
+    };
+  return {
+    kind: "fallback",
+    reason: "empty",
+    message: "The stored snapshot has no records yet.",
+  };
+}
+
+export async function loadSnapshot(
+  fetcher: typeof fetch = fetch,
+  signal?: AbortSignal,
+  timeoutMs = 10_000,
+): Promise<SnapshotOutcome> {
+  return resolveSnapshot(await loadStoredPanels(fetcher, signal, timeoutMs));
+}
+
 // Fixed illustrative records. Never merge them with a stored snapshot or call them real visitors.
 const visits = [
   84, 112, 97, 146, 128, 173, 155, 196, 168, 214, 193, 247, 226, 268,
@@ -210,8 +276,18 @@ const hours = hourWeights.map((value) =>
 );
 hours[hours.length - 1] +=
   demoTotal - hours.reduce((sum, value) => sum + value, 0);
+const sessionSeconds = [
+  148, 162, 155, 171, 166, 184, 177, 192, 181, 203, 196, 214, 207, 221,
+];
 export const DEMO_PANELS: Panels = {
   visits: { status: "ready", rows: visits },
+  sessions: {
+    status: "ready",
+    rows: visits.map((row, index) => ({
+      label: row.label,
+      value: sessionSeconds[index],
+    })),
+  },
   sources: {
     status: "ready",
     rows: [
@@ -219,6 +295,18 @@ export const DEMO_PANELS: Panels = {
       { label: "Search", value: 716 },
       { label: "Social", value: 422 },
       { label: "Referral", value: 185 },
+    ],
+  },
+  referrals: {
+    status: "ready",
+    rows: [
+      { label: "Direct", value: 1084 },
+      { label: "google.com", value: 598 },
+      { label: "x.com", value: 236 },
+      { label: "linkedin.com", value: 186 },
+      { label: "bing.com", value: 118 },
+      { label: "github.com", value: 112 },
+      { label: "news.ycombinator.com", value: 73 },
     ],
   },
   locations: {
