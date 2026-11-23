@@ -22,7 +22,7 @@
     "kill-wrangler": "cd cloudflare-worker && ./kill-wrangler.sh",
     "deploy-worker": "cd cloudflare-worker && ./deploy.sh",
     "lint:icons": "node scripts/lint-icons.mjs",
-    "test": "node --test tests/*.test.ts scripts/icons.test.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts scripts/icons.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
