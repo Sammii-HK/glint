@@ -25,36 +25,34 @@ export const PANEL_INFO: Record<
   { title: string; endpoint: string; scope: string }
 > = {
   visits: {
-    title: "Captured visit events",
+    title: "Visit events",
     endpoint: "/api/averageMetrics",
-    scope: "Latest 100 metric records, grouped by UTC date.",
+    scope: "Visits by UTC date, from the latest 100 records.",
   },
   sources: {
     title: "Traffic sources",
     endpoint: "/api/trafficSources",
-    scope: "Source records aggregated by the ingestion API.",
+    scope: "Visits by source, across all stored records.",
   },
   locations: {
     title: "Locations",
     endpoint: "/api/locationMetrics",
-    scope: "Location records grouped by country.",
+    scope: "Visits by country, across all stored records.",
   },
   devices: {
     title: "Devices",
     endpoint: "/api/deviceMetrics",
-    scope:
-      "Mean stored percentage per device label; not a measured visitor share.",
+    scope: "Average recorded share for each device type.",
   },
   browsers: {
     title: "Browsers",
     endpoint: "/api/browserMetrics",
-    scope: "Browser counts from the latest 500 metric records.",
+    scope: "Browser counts from the latest 500 records.",
   },
   hours: {
     title: "Hourly pattern",
     endpoint: "/api/hourlyMetrics",
-    scope:
-      "Hour buckets from the latest 500 metric records; not a continuous time series.",
+    scope: "Visits by hour of day, from the latest 500 records.",
   },
 };
 

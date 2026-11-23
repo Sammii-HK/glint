@@ -79,7 +79,7 @@ function PanelMessage({
   return (
     <div className="panel-message">
       <p>No records in this snapshot</p>
-      <span>An empty result is different from a failed request.</span>
+      <span>Nothing has been recorded for this view yet.</span>
     </div>
   );
 }
@@ -214,10 +214,10 @@ export default function Dashboard() {
         panels.visits.status === "ready"
           ? number.format(total(visits))
           : "Not loaded",
-      note: "Sum of the displayed captured dates",
+      note: "Total across the dates shown",
     },
     {
-      label: "Captured dates",
+      label: "Dates shown",
       value:
         panels.visits.status === "ready" ? String(visits.length) : "Not loaded",
       note: visits.length
@@ -230,7 +230,7 @@ export default function Dashboard() {
         panels.sources.status === "ready"
           ? (panels.sources.rows[0]?.label ?? "No records")
           : "Not loaded",
-      note: "From its own source snapshot",
+      note: "By recorded visits",
     },
     {
       label: "Top location",
@@ -240,12 +240,12 @@ export default function Dashboard() {
             ? country(panels.locations.rows[0].label)
             : "No records"
           : "Not loaded",
-      note: "From its own location snapshot",
+      note: "By recorded visits",
     },
   ];
   const scope = (key: keyof Panels) =>
     mode === "demo"
-      ? "Fixed illustrative records, not production traffic."
+      ? "Sample records from the demo dataset."
       : PANEL_INFO[key].scope;
   return (
     <div className="glint-shell">
@@ -305,13 +305,13 @@ export default function Dashboard() {
           <div>
             <strong>
               {mode === "demo"
-                ? "You are exploring synthetic data."
-                : "Stored records can include simulated traffic."}
+                ? "You are viewing the demo dataset."
+                : "You are viewing stored records."}
             </strong>
             <p>
               {mode === "demo"
-                ? "This fixed example covers 6–19 November 2026. It shows how the dashboard works, not a real audience."
-                : "The prototype receives generated traffic. These independent query windows are not one cohort, and they are not unique visitors."}
+                ? "Two weeks of sample traffic, 6 to 19 November 2026, to show how each view reads."
+                : "Events from the collector, including simulated traffic. Each panel reads its own recent window."}
             </p>
           </div>
           {mode === "stored" && (
@@ -348,7 +348,7 @@ export default function Dashboard() {
             <div className="card-heading">
               <div>
                 <p className="eyebrow">The shape of a snapshot</p>
-                <h2>Captured visit events</h2>
+                <h2>Visit events</h2>
               </div>
               <div
                 role="group"
@@ -373,7 +373,7 @@ export default function Dashboard() {
                 <div
                   className="chart-canvas"
                   role="group"
-                  aria-label={`${total(visits)} visit events across ${visits.length} captured dates. Values are available in the data table.`}
+                  aria-label={`${total(visits)} visit events across ${visits.length} dates. Values are available in the data table.`}
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
@@ -449,7 +449,7 @@ export default function Dashboard() {
                   </span>
                   {peak && (
                     <p>
-                      Highest captured date <strong>{date(peak.label)}</strong>{" "}
+                      Busiest date <strong>{date(peak.label)}</strong>{" "}
                       · {number.format(peak.value)}
                     </p>
                   )}
@@ -502,7 +502,7 @@ export default function Dashboard() {
                 <div
                   className="chart-canvas compact"
                   role="group"
-                  aria-label="Captured visits grouped into hour buckets. Values are available in the data table."
+                  aria-label="Visits by hour of day. Values are available in the data table."
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -559,8 +559,8 @@ export default function Dashboard() {
           aria-label="Technology snapshots"
         >
           <article className="chart-card">
-            <p className="eyebrow">A separate measure</p>
-            <h2>Average recorded device mix</h2>
+            <p className="eyebrow">Screen sizes</p>
+            <h2>Devices</h2>
             <p className="card-description">{scope("devices")}</p>
             <Breakdown panel={panels.devices} unit="%" onRetry={retry} />
           </article>
@@ -573,14 +573,13 @@ export default function Dashboard() {
         </section>
         <footer className="dashboard-footer">
           <p>
-            <strong>Source matters.</strong> Session duration and network speed
-            are not shown as measured behaviour: the prototype generates those
-            values. Stored panels may use different query windows.
+            <strong>Glint</strong> collects visits in Next.js middleware and
+            stores them in PostgreSQL.
           </p>
           <p role="status">
             {mode === "demo"
-              ? "Synthetic example · fixed dataset"
-              : `${ready} of 6 panels loaded${loadedAt ? ` · checked ${loadedAt}` : ""}.`}
+              ? "Demo dataset"
+              : `${ready} of 6 panels loaded${loadedAt ? ` · updated ${loadedAt}` : ""}`}
           </p>
         </footer>
       </main>

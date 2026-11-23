@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Glint: analytics with visible data provenance",
+  title: "Glint: analytics on the edge",
   description:
-    "Explore a clearly labelled synthetic dataset or inspect stored metric snapshots in this analytics prototype.",
+    "An analytics dashboard for traffic, sources, locations and devices, with a demo dataset and stored snapshots.",
 };
 
 export default function RootLayout({
